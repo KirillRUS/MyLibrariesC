@@ -1,139 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 
-namespace NeuralNetwork
+namespace NeuralNetworkLibrary
 {
     public class NeuralNetwork
     {
-        public float SpeedOfTraining = 0.7f;
-        Random rnd = new Random();
-        public Layer[] LayerArray;
-        public NeuralNetwork(int NumberOfNeuralLayers, int NumberOfNeuronsInNeuralLayer, int NumberOfInputNeurons, int NumberOfOutputNeurons)
+        public const double Version = 1.00;     //Текущая версия
+        public float SpeedOfTraining = 0.85f;    //Скорость обучения
+        public float Erorr = -1f;
+        public Layer[] LayerArray;              //Массив слоев
+
+        //Иницилизирует новую сеть
+        public NeuralNetwork(Layer[] LayerArray)
         {
-            LayerArray = new Layer[NumberOfNeuralLayers];
-
-
-            for (int i = 1; i < LayerArray.Length - 1; i++)
-                if (i != LayerArray.Length - 2)
-                    LayerArray[i] = new NeuralLayer(Layer.LayerType.NeuralLayer, NumberOfNeuronsInNeuralLayer, NumberOfNeuronsInNeuralLayer, rnd);
-                else
-                    LayerArray[i] = new NeuralLayer(Layer.LayerType.NeuralLayer, NumberOfNeuronsInNeuralLayer, NumberOfOutputNeurons, rnd);
-            if (NumberOfNeuralLayers > 2)
-                LayerArray[0] = new NeuralLayer(Layer.LayerType.NeuralLayer, NumberOfInputNeurons, NumberOfNeuronsInNeuralLayer, rnd);
-            else
-                LayerArray[0] = new NeuralLayer(Layer.LayerType.NeuralLayer, NumberOfInputNeurons, NumberOfOutputNeurons, rnd);
-            LayerArray[LayerArray.Length - 1] = new NeuralLayer(Layer.LayerType.NeuralLayer, NumberOfOutputNeurons, 0, rnd);
-
-
-
+            this.LayerArray = LayerArray;
         }
-        public float[] Calculate(float[] Input)
-        {
-            NeuralLayer[] LayerArray = new NeuralLayer[this.LayerArray.Length];
-            for (int i = 0; i < this.LayerArray.Length; i++)
-                LayerArray[i] = (NeuralLayer)this.LayerArray[i];
-
-            for (int i = 0; i < LayerArray.Length; i++)
-                for (int j = 0; j < LayerArray[i].NeuronArray.Length; j++)
-                    LayerArray[i].NeuronArray[j].InputValue = 0;
-
-            for (int i = 0; i < LayerArray[0].NeuronArray.Length; i++)
-                LayerArray[0].NeuronArray[i].InputValue = Input[i];
-
-            for (int i = 0; i < LayerArray.Length - 1; i++)
-            {
-                for (int j = 0; j < LayerArray[i].NeuronArray.Length; j++)
-                {
-                    LayerArray[i].NeuronArray[j].Calculate(LayerArray[i + 1]);
-                }
-            }
-
-            float[] Output = new float[LayerArray[LayerArray.Length - 1].NeuronArray.Length];
-            for (int i = 0; i < LayerArray[LayerArray.Length - 1].NeuronArray.Length; i++)
-                Output[i] = LayerArray[LayerArray.Length - 1].NeuronArray[i].InputValue;
-
-            return Output;
-        }
-        public float Training(int NEpoch, TrainingSet[] TrainingSetArray)
-        {
-            float Erorr = 1;
-            for (int e = 0; e < NEpoch; e++)
-            {
-                Erorr = 1;
-                for (int i = 0; i < TrainingSetArray.Length; i++)
-                {
-                    float[] answer = Calculate(TrainingSetArray[i].InputArray);
-                    for (int j = 0; j < answer.Length; j++)
-                    {
-                        ((NeuralLayer)LayerArray[LayerArray.Length - 1]).NeuronArray[j].Error = TrainingSetArray[i].OutputArray[j] - answer[j];
-                        Erorr = (float)Math.Pow(TrainingSetArray[i].OutputArray[j] - answer[j], 2);//100 99
-                    }
-                    for (int j = LayerArray.Length - 2; j >= 0; j--)
-                    {
-                        for (int k = 0; k < ((NeuralLayer)LayerArray[j]).NeuronArray.Length; k++)
-                        {
-                            ((NeuralLayer)LayerArray[j]).NeuronArray[k].CalculateDeltaW((NeuralLayer)LayerArray[j + 1], SpeedOfTraining);
-                        }
-                    }
-                    for (int j = LayerArray.Length - 2; j >= 0; j--)
-                    {
-                        for (int k = 0; k < ((NeuralLayer)LayerArray[j]).NeuronArray.Length; k++)
-                        {
-                            ((NeuralLayer)LayerArray[j]).NeuronArray[k].ToCorrectSynapseArray();
-                        }
-                    }
-
-
-                }
-                Erorr /= TrainingSetArray.Length;
-                if (e % 100 == 0)
-                    Console.WriteLine(Erorr);
-                Thread.Sleep(3);
-            }
-            return Erorr;
-        }
-
-
-    }
-    public class ConvolutionaryNeuralNetwork
-    {
-        public float SpeedOfTraining = 0.7f;
-
-        Random rnd = new Random();
-        public Layer[] LayerArray;
-        public ConvolutionaryNeuralNetwork(int NumberOfConvolutionaryLayers, int NFiltersByLayer, int SizeOfFilter,
-            int NumberOfNeuralLayers, int NumberOfNeuronsInNeuralLayer, int NumberOfInputNeurons, int NumberOfOutputNeurons)
-        {
-            LayerArray = new Layer[NumberOfNeuralLayers + NumberOfConvolutionaryLayers * 2];
-
-            LayerArray[0] = new CompressionLayer(Layer.LayerType.CompressionLayer);
-            LayerArray[1] = new ConvolutionaryLayer(Layer.LayerType.ConvolutionaryLayer, SizeOfFilter, SizeOfFilter, 3, NFiltersByLayer, rnd);
-            for (int i = 2; i < NumberOfConvolutionaryLayers * 2; i += 2)
-            {
-                LayerArray[i] = new CompressionLayer(Layer.LayerType.CompressionLayer);
-                LayerArray[i + 1] = new ConvolutionaryLayer(Layer.LayerType.ConvolutionaryLayer, SizeOfFilter, SizeOfFilter, NFiltersByLayer, NFiltersByLayer, rnd);
-            }
-
-
-            for (int i = NumberOfConvolutionaryLayers * 2; i < LayerArray.Length - 1; i++)
-                if (i != LayerArray.Length - 2)
-                    LayerArray[i] = new NeuralLayer(Layer.LayerType.NeuralLayer, NumberOfNeuronsInNeuralLayer, NumberOfNeuronsInNeuralLayer, rnd);
-                else
-                    LayerArray[i] = new NeuralLayer(Layer.LayerType.NeuralLayer, NumberOfNeuronsInNeuralLayer, NumberOfOutputNeurons, rnd);
-
-            if (NumberOfNeuralLayers > 2)
-                LayerArray[NumberOfConvolutionaryLayers * 2] = new NeuralLayer(Layer.LayerType.NeuralLayer, NumberOfInputNeurons, NumberOfNeuronsInNeuralLayer, rnd);
-            else
-                LayerArray[NumberOfConvolutionaryLayers * 2] = new NeuralLayer(Layer.LayerType.NeuralLayer, NumberOfInputNeurons, NumberOfOutputNeurons, rnd);
-            LayerArray[LayerArray.Length - 1] = new NeuralLayer(Layer.LayerType.NeuralLayer, NumberOfOutputNeurons, 0, rnd);
-        }
-        public ConvolutionaryNeuralNetwork(byte[] ByteArray)
+        public NeuralNetwork(byte[] ByteArray)
         {
             DataArray DA = new DataArray(ByteArray);
             LayerArray = new Layer[DA.ReadInt()];
@@ -141,119 +29,153 @@ namespace NeuralNetwork
             {
                 int LayerType = DA.ReadInt();
                 if (LayerType == 0)
-                    LayerArray[i] = new NeuralLayer(Layer.LayerType.NeuralLayer, DA);
+                    LayerArray[i] = new NeuralLayer(DA);
                 if (LayerType == 1)
-                    LayerArray[i] = new ConvolutionaryLayer(Layer.LayerType.ConvolutionaryLayer, DA);
+                    LayerArray[i] = new ConvolutionaryLayer(DA);
                 if (LayerType == 2)
-                    LayerArray[i] = new CompressionLayer(Layer.LayerType.CompressionLayer);
+                    LayerArray[i] = new CompressionLayer();
             }
             ByteArray = Addition(BitConverter.GetBytes(ByteArray.Length), ByteArray);
         }
 
-        public float[] Calculate(Matrix InputMatrix)
-        {
-            int index = 0;
 
-            while (LayerArray[index]._LayerType != Layer.LayerType.NeuralLayer && index < LayerArray.Length)
+        //Вычисляет значение по данным InputArray
+        public float[] Calculate(float[] InputArray)
+        {
+            if (LayerArray.Length == 0 || LayerArray[0]._LayerType != Layer.LayerType.NeuralLayer)
+                Console.WriteLine("Error!!! Неверный тип входных данных для данного типа сети!");
+
+            int index = 0;
+            LayerArray[index].SetInputArray(InputArray);
+            for (; index < LayerArray.Length; index++)
             {
-                if (LayerArray[index]._LayerType == Layer.LayerType.CompressionLayer)
+                if (LayerArray[index]._LayerType == Layer.LayerType.NeuralLayer)
                 {
-                    ((CompressionLayer)LayerArray[index]).InputMatrix = InputMatrix;
-                    ((CompressionLayer)LayerArray[index]).Calculate();
-                    InputMatrix = ((CompressionLayer)LayerArray[index]).OutputMatrix;
+                    LayerArray[index].Calculate();
+                    if (index != LayerArray.Length - 1)
+                        LayerArray[index + 1].SetInputArray(LayerArray[index].OutputArray);
                 }
                 if (LayerArray[index]._LayerType == Layer.LayerType.ConvolutionaryLayer)
                 {
-                    ((ConvolutionaryLayer)LayerArray[index]).InputMatrix = InputMatrix;
-                    ((ConvolutionaryLayer)LayerArray[index]).Calculate();
-                    InputMatrix = ((ConvolutionaryLayer)LayerArray[index]).OutputMatrix;
-                }
-                index++;
-            }
-
-            float[] Input = InputMatrix.ToFloatArray();
-
-            for (int i = index; i < LayerArray.Length; i++)
-                for (int j = 0; j < ((NeuralLayer)LayerArray[i]).NeuronArray.Length; j++)
-                    ((NeuralLayer)LayerArray[i]).NeuronArray[j].InputValue = 0;
-
-            for (int i = 0; i < ((NeuralLayer)LayerArray[index]).NeuronArray.Length; i++)
-                ((NeuralLayer)LayerArray[index]).NeuronArray[i].InputValue = Input[i];
-
-            for (int i = index; i < LayerArray.Length - 1; i++)
-            {
-                for (int j = 0; j < ((NeuralLayer)LayerArray[i]).NeuronArray.Length; j++)
-                {
-                    ((NeuralLayer)LayerArray[i]).NeuronArray[j].Calculate(((NeuralLayer)LayerArray[i + 1]));
+                    LayerArray[index].Calculate();
+                    if (index != LayerArray.Length - 1)
+                        LayerArray[index + 1].SetInputArray(LayerArray[index].OutputMatrix);
                 }
             }
-
-            float[] Output = new float[((NeuralLayer)LayerArray[LayerArray.Length - 1]).NeuronArray.Length];
-            for (int i = 0; i < ((NeuralLayer)LayerArray[LayerArray.Length - 1]).NeuronArray.Length; i++)
-                Output[i] = ((NeuralLayer)LayerArray[LayerArray.Length - 1]).NeuronArray[i].InputValue;
-
-            return Output;
+            LayerArray[--index].Calculate();//!!!
+            return LayerArray[index].OutputArray;
         }
-        public float Training(int NEpoch, ConvolutionaryTrainingSet[] TrainingSetArray)
+        public float[] Calculate(Matrix InputMatrix)
         {
-            float Erorr = 1;
-            for (int e = 0; e < NEpoch; e++)
+            if (LayerArray.Length == 0 || LayerArray[0]._LayerType == Layer.LayerType.NeuralLayer)
+                Console.WriteLine("Error!!! Неверный тип входных данных для данного типа сети!");
+
+            int index = 0;
+            LayerArray[index].SetInputArray(InputMatrix);
+            for (; index < LayerArray.Length; index++)
             {
-                Erorr = 1;
-                for (int i = 0; i < TrainingSetArray.Length; i++)
+                if (LayerArray[index]._LayerType == Layer.LayerType.NeuralLayer)
                 {
-                    float[] answer = Calculate(TrainingSetArray[i].InputArray);
-                    for (int j = 0; j < answer.Length; j++)
-                    {
-                        ((NeuralLayer)LayerArray[LayerArray.Length - 1]).NeuronArray[j].Error = TrainingSetArray[i].OutputArray[j] - answer[j];
-                        Erorr += (float)Math.Pow(TrainingSetArray[i].OutputArray[j] - answer[j], 2);
-                    }
-
-                    int indexFirstNeuralLayer = 0;
-                    while (LayerArray[indexFirstNeuralLayer]._LayerType != Layer.LayerType.NeuralLayer)
-                        indexFirstNeuralLayer++;
-                    for (int j = LayerArray.Length - 2; j >= indexFirstNeuralLayer; j--)
-                    {
-                        for (int k = 0; k < ((NeuralLayer)LayerArray[j]).NeuronArray.Length; k++)
-                        {
-                            ((NeuralLayer)LayerArray[j]).NeuronArray[k].CalculateDeltaW((NeuralLayer)LayerArray[j + 1], SpeedOfTraining);
-                        }
-                    }
-
-                    ((NeuralLayer)LayerArray[indexFirstNeuralLayer]).FillErrorArray(((ConvolutionaryLayer)LayerArray[indexFirstNeuralLayer - 1]).OutputMatrix.W,
-                        ((ConvolutionaryLayer)LayerArray[indexFirstNeuralLayer - 1]).OutputMatrix.H, ((ConvolutionaryLayer)LayerArray[indexFirstNeuralLayer - 1]).OutputMatrix.D);
-
-                    for (int j = indexFirstNeuralLayer - 1; j >= 0; j--)
-                        if (LayerArray[j]._LayerType == Layer.LayerType.ConvolutionaryLayer)
-                            ((ConvolutionaryLayer)LayerArray[j]).CalculateDeltaW(LayerArray[j + 1], SpeedOfTraining);
-                        else
-                            ((CompressionLayer)LayerArray[j]).CalculateDeltaW(LayerArray[j + 1]);
-
-                    for (int j = LayerArray.Length - 2; j > indexFirstNeuralLayer; j--)
-                    {
-                        for (int k = 0; k < ((NeuralLayer)LayerArray[j]).NeuronArray.Length; k++)
-                        {
-                            ((NeuralLayer)LayerArray[j]).NeuronArray[k].ToCorrectSynapseArray();
-                        }
-                    }
-                    for (int j = indexFirstNeuralLayer - 1; j >= 0; j -= 2)
-                        ((ConvolutionaryLayer)LayerArray[j]).ToCorrectFiltersArray();
-
-
+                    LayerArray[index].Calculate();
+                    if (index != LayerArray.Length - 1)
+                        LayerArray[index + 1].SetInputArray(LayerArray[index].OutputArray);
                 }
-                if (SpeedOfTraining > 0.02f)
-                    SpeedOfTraining *= 0.98f;
-                else
-                    SpeedOfTraining *= (1 - SpeedOfTraining / 2);
-                Erorr /= TrainingSetArray.Length;
-                if (e % 25 == 0)
-                    Console.WriteLine(Erorr);
-                //Thread.Sleep(3);
+                if (LayerArray[index]._LayerType == Layer.LayerType.ConvolutionaryLayer)
+                {
+                    LayerArray[index].Calculate();
+                    if (index != LayerArray.Length - 1)
+                        LayerArray[index + 1].SetInputArray(LayerArray[index].OutputMatrix);
+                }
+                if (LayerArray[index]._LayerType == Layer.LayerType.CompressionLayer)
+                {
+                    LayerArray[index].Calculate();
+                    if (index != LayerArray.Length - 1)
+                        LayerArray[index + 1].SetInputArray(LayerArray[index].OutputMatrix);
+                }
             }
-            return Erorr;
+            --index;
+            return LayerArray[index].OutputArray;
+        }
+        //Тестирует сеть
+        public float TestNeuralNetwork(TrainingSet[] TrainingSetArray)
+        {
+            if (LayerArray.Length == 0)
+                Console.WriteLine("Error!!! Неверный тип входных данных для данного типа сети!");
+
+            float erorr = 0;
+            for (int i = 0; i < TrainingSetArray.Length; i++)
+            {
+                float[] a;
+                if (LayerArray[0]._LayerType == Layer.LayerType.NeuralLayer)
+                    a = Calculate(TrainingSetArray[i].InputArray);
+                else
+                    a = Calculate(TrainingSetArray[i].InputMatrix);
+                if (a.Length != TrainingSetArray[i].OutputArray.Length)
+                    Console.WriteLine("Error!!! Неверный тип входных данных для данного типа сети! #2");
+                for (int j = 0; j < a.Length; j++)
+                {
+                    erorr += Math.Abs((a[j] - TrainingSetArray[i].OutputArray[j]) / a.Length / TrainingSetArray.Length);
+                }
+            }
+            Erorr = erorr;
+            return erorr;
+        }
+        //Случаным образом изменяет сеть
+        public void ToRandomlyChange(float DegreeOfChange, Random rnd)
+        {
+            int NChange = (int)(rnd.NextDouble() * LayerArray.Length * 1000);
+            for (int i = 0; i < NChange; i++)
+            {
+                LayerArray[(int)(rnd.NextDouble() * LayerArray.Length)].ToRandomlyChange(DegreeOfChange, rnd);
+            }
+        }
+        //
+        public void ToCorrectLayers(float[] Answer, float[] CorrectAnswer)
+        {
+            for (int i = 0; i < Answer.Length; i++)
+            {
+                Answer[i] = (CorrectAnswer[i] - Answer[i]) * LayerArray[LayerArray.Length - 1].OutputArray[i] *
+                    (1 - LayerArray[LayerArray.Length - 1].OutputArray[i]);
+            }
+                
+            LayerArray[LayerArray.Length - 1].ToCorrectLayer(Answer, SpeedOfTraining);
+            for (int i = LayerArray.Length - 2; i >= 0; i--)
+            {
+                if (LayerArray[i]._LayerType == Layer.LayerType.NeuralLayer)
+                    LayerArray[i].ToCorrectLayer(LayerArray[i + 1].ErrorArray, SpeedOfTraining);
+
+                if (LayerArray[i]._LayerType == Layer.LayerType.ConvolutionaryLayer && LayerArray[i + 1]._LayerType == Layer.LayerType.NeuralLayer)
+                    LayerArray[i + 1].FillErrorMatrix(LayerArray[i].OutputMatrix.W, LayerArray[i].OutputMatrix.H, LayerArray[i].OutputMatrix.D);
+                if (LayerArray[i]._LayerType == Layer.LayerType.ConvolutionaryLayer || LayerArray[i]._LayerType == Layer.LayerType.CompressionLayer)
+                    LayerArray[i].ToCorrectLayer(LayerArray[i + 1].ErrorMatrix, SpeedOfTraining);
+            }
+        }
+        public void EducatNetwork(TrainingSet[] TrainingSetArray)
+        {
+            for (int i = 0; i < TrainingSetArray.Length; i++)
+            {
+                float[] a;
+                if (LayerArray[0]._LayerType == Layer.LayerType.NeuralLayer)
+                    a = Calculate(TrainingSetArray[i].InputArray);
+                else
+                    a = Calculate(TrainingSetArray[i].InputMatrix);
+                if (a.Length != TrainingSetArray[i].OutputArray.Length)
+                    Console.WriteLine("Error!!! Неверный тип входных данных для данного типа сети! #1");
+                ToCorrectLayers(a, TrainingSetArray[i].OutputArray);
+            }
         }
 
 
+        //Клонирует объект
+        public NeuralNetwork Clone()
+        {
+            Layer[] newLayerArray = new Layer[LayerArray.Length];
+            for (int i = 0; i < LayerArray.Length; i++)
+                newLayerArray[i] = LayerArray[i].Clone();
+            return new NeuralNetwork(newLayerArray);
+        }
+
+        //Возвращает параметры слоя для сохранения
         public byte[] ToByteArray()
         {
             byte[] ByteArray = new byte[0];
@@ -265,6 +187,7 @@ namespace NeuralNetwork
             ByteArray = Addition(BitConverter.GetBytes(ByteArray.Length), ByteArray);
             return ByteArray;
         }
+        //Объединяет битные массивы
         public static byte[] Addition(byte[] a, byte[] b)
         {
             byte[] s = new byte[a.Length + b.Length];
@@ -275,90 +198,443 @@ namespace NeuralNetwork
                 s[i + index] = b[i];
             return s;
         }
+        //Выводит в консоль
+        public void WriteInConsole()
+        {
+            for (int i = 0; i < LayerArray.Length; i++)
+            {
+                Console.WriteLine("Layer {0}:", i);
+                LayerArray[i].WriteInConsole();
+            }
+        }
+        //Сохраняет сеть в фаил
+        public void SaveInFile(string fileName)
+        {
+            using (BinaryWriter writer = new BinaryWriter(File.Open(fileName, FileMode.OpenOrCreate)))
+            {
+                writer.Write(ToByteArray());
+            }
+        }
+        //Загружает сеть из файла
+        public void LoadFromFile(string fileName)
+        {
+            using (BinaryReader reader = new BinaryReader(File.Open(fileName, FileMode.Open)))
+            {
+                int a = reader.ReadInt32();
+                NeuralNetwork newNeuralNetwork = new NeuralNetwork(reader.ReadBytes(a));
+                LayerArray = newNeuralNetwork.LayerArray;
+            }
+        }
     }
     public class TrainingSet
     {
-        public float[] InputArray;
-        public float[] OutputArray;
+        public float[] InputArray;  //Входящие значения
+        public Matrix InputMatrix;  //Входящие значения
+        public float[] OutputArray; //Исходящие значения
+        //Инициализирует класс
         public TrainingSet(float[] InputArray, float[] OutputArray)
         {
             this.InputArray = InputArray;
             this.OutputArray = OutputArray;
         }
-    }
-    public class ConvolutionaryTrainingSet
-    {
-        public Matrix InputArray;
-        public float[] OutputArray;
-        public ConvolutionaryTrainingSet(Matrix InputArray, float[] OutputArray)
+        public TrainingSet(Matrix InputMatrix, float[] OutputArray)
         {
-            this.InputArray = InputArray;
+            this.InputMatrix = InputMatrix;
             this.OutputArray = OutputArray;
+            InputArray = null;
         }
     }
 
+    public class Layer
+    {
+        public enum LayerType { NeuralLayer, ConvolutionaryLayer, CompressionLayer };
+        public LayerType _LayerType;
+
+        public virtual void SetInputArray(Matrix InputMatrix)
+        {
+
+        }
+        public virtual void SetInputArray(float[] InputMatrix)
+        {
+
+        }
+        public virtual void Calculate()
+        {
+            return;
+        }
+        public virtual void ToRandomlyChange(float DegreeOfChange, Random rnd)
+        {
+
+        }
+
+        //Расчитывает дельту и ошибку
+        public virtual void ToCorrectLayer(float[] NextErrorArray, float SpeedOfTraining)
+        {
+
+        }
+        public virtual void ToCorrectLayer(Matrix NextErrorArray, float SpeedOfTraining)
+        {
+
+        }
+
+        public virtual void FillErrorMatrix(int W, int H, int D)
+        {
+
+        }
+
+        public Matrix ErrorMatrix, OutputMatrix, InputMatrix;
+        public float[] OutputArray, InputArray, ErrorArray;
+
+
+        public virtual byte[] ToByteArray()
+        {
+            byte[] ByteArray = BitConverter.GetBytes(_LayerType.GetHashCode());
+            return ByteArray;
+        }
+        //Клонирует объект
+        public virtual Layer Clone()
+        {
+            return null;
+        }
+        public static byte[] Addition(byte[] a, byte[] b)
+        {
+            byte[] s = new byte[a.Length + b.Length];
+            int index;
+            for (index = 0; index < a.Length; index++)
+                s[index] = a[index];
+            for (int i = 0; i < b.Length; i++)
+                s[i + index] = b[i];
+            return s;
+        }
+
+        //Функция активации
+        public float ActivationFunction(float Input)
+        {
+            return 1 / (float)(1 + Math.Exp(-Input));
+        }
+        public float InverseActivationFunction(float Input)
+        {
+            return ActivationFunction(Input) * (1 - ActivationFunction(Input));
+        }
+
+        //Выводит в консоль
+        public virtual void WriteInConsole()
+        {
+
+        }
+    }
+
+    public class NeuralLayer : Layer
+    {
+        public Neuron[] NeuronArray;    //Массив нейронов
+
+        //Инициализирует класс NeuralLayer, генерирует случайные веса связей
+        public NeuralLayer(int NumberOfNeuronsInLayer, int NumberOfNeuronsInNextLayer, Random rnd)
+        {
+            this._LayerType = LayerType.NeuralLayer;
+            NeuronArray = new Neuron[NumberOfNeuronsInLayer];
+            for (int i = 0; i < NumberOfNeuronsInLayer; i++)
+            {
+                NeuronArray[i] = new Neuron(new float[NumberOfNeuronsInNextLayer]);
+                NeuronArray[i].SetRandomSynapseArray(rnd);
+            }
+        }
+        //Инициализирует класс  NeuralLayer, заполняет веса значениями из DataArray
+        public NeuralLayer(DataArray DA)
+        {
+            this._LayerType = LayerType.NeuralLayer;
+
+            NeuronArray = new Neuron[DA.ReadInt()];
+            for (int i = 0; i < NeuronArray.Length; i++)
+                NeuronArray[i] = new Neuron(DA);
+        }
+        //Инициализирует класс  NeuralLayer, заполняет веса значениями из DataArray
+        public NeuralLayer(Neuron[] NeuronArray)
+        {
+            this._LayerType = LayerType.NeuralLayer;
+            this.NeuronArray = NeuronArray;
+        }
+
+        //Вычисляет значения массива OutputArray из массива InputArray
+        public override void Calculate()
+        {
+            if (InputArray == null && InputArray.Length == NeuronArray.Length)
+                Console.WriteLine("Error! Ошибка входящего массива");
+            for (int i = 0; i < InputArray.Length; i++)
+                NeuronArray[i].Value = InputArray[i];
+            OutputArray = new float[NeuronArray[0].SynapseArray.Length];
+            for (int i = 0; i < OutputArray.Length; i++)
+                OutputArray[i] = 0;
+
+            for (int i = 0; i < InputArray.Length; i++)
+                for (int j = 0; j < NeuronArray[0].SynapseArray.Length; j++)
+                    OutputArray[j] += InputArray[i] * NeuronArray[i].SynapseArray[j];
+
+            for (int i = 0; i < OutputArray.Length; i++)
+                OutputArray[i] = ActivationFunction(OutputArray[i]);
+        }
+
+        //Заполняет массив InputArray
+        public override void SetInputArray(Matrix InputMatrix)
+        {
+            InputArray = InputMatrix.ToFloatArray();
+        }
+        //Заполняет массив InputArray
+        public override void SetInputArray(float[] inputArray)
+        {
+            InputArray = inputArray;
+        }
+
+
+        //Расчитывает дельту и ошибку
+        public override void ToCorrectLayer(float[] NextErrorArray, float SpeedOfTraining)
+        {
+            ErrorArray = new float[NeuronArray.Length];
+            for (int i = 0; i < NeuronArray.Length; i++)
+            {
+                ErrorArray[i] = 0;
+                for (int j = 0; j < NextErrorArray.Length; j++)
+                    ErrorArray[i] += NeuronArray[i].SynapseArray[j] * NextErrorArray[j];
+                ErrorArray[i] *= InputArray[i] * (1 - InputArray[i]);
+            }
+            for (int i = 0; i < NeuronArray.Length; i++)
+                for (int j = 0; j < NeuronArray[i].SynapseArray.Length; j++)
+                    NeuronArray[i].SynapseArray[j] += SpeedOfTraining * NextErrorArray[j] * InputArray[i];
+        }
+
+        //-------!!! Не проверенная функция !!!-------
+        public override void FillErrorMatrix(int W, int H, int D)
+        {
+            ErrorMatrix = new Matrix(W, H, D);
+            for (int i = 0; i < W; i++)
+                for (int j = 0; j < H; j++)
+                    for (int k = 0; k < D; k++)
+                        ErrorMatrix.matrix[i][j][k] = ErrorArray[i + j * W + k * W * H];
+        }
+
+        //Вносит случайнык изменения
+        public override void ToRandomlyChange(float DegreeOfChange, Random rnd)
+        {
+            int index = (int)(rnd.NextDouble() * NeuronArray.Length);
+            if (NeuronArray[index].SynapseArray.Length != 0)
+                NeuronArray[index].SynapseArray[(int)(rnd.NextDouble() * NeuronArray[index].SynapseArray.Length)] *= (float)(rnd.NextDouble() * DegreeOfChange);//(float)(rnd.NextDouble() * 2 - 1) * DegreeOfChange + 1 + (float)rnd.NextDouble();
+        }
+
+        //Возвращает параметры слоя для сохранения
+        public override byte[] ToByteArray()
+        {
+            byte[] ByteArray = BitConverter.GetBytes(_LayerType.GetHashCode());
+            ByteArray = Addition(ByteArray, BitConverter.GetBytes(NeuronArray.Length));
+            for (int i = 0; i < NeuronArray.Length; i++)
+            {
+                ByteArray = Addition(ByteArray, NeuronArray[i].ToByteArray());
+            }
+            return ByteArray;
+        }
+        //Клонирует объект
+        public override Layer Clone()
+        {
+            Neuron[] newNeuronArray = new Neuron[NeuronArray.Length];
+            for (int i = 0; i < NeuronArray.Length; i++)
+                newNeuronArray[i] = NeuronArray[i].Clone();
+            return new NeuralLayer(newNeuronArray);
+        }
+        //Выводит в консоль
+        public override void WriteInConsole()
+        {
+            for (int i = 0; i < NeuronArray.Length; i++)
+            {
+                Console.WriteLine("Neuron {0}:", i);
+                NeuronArray[i].WriteInConsole();
+            }
+        }
+    }
+    public class ConvolutionaryLayer : Layer
+    {
+        private Matrix[] ArrayFilters, DeltaW;
+        private int WFilters, HFilters;
+
+        //Инициализирует класс ConvolutionaryLayer
+        public ConvolutionaryLayer(int WFilters, int HFilters, int DepthOfInputMatrix, int NFilters, Random rnd)
+        {
+            this._LayerType = LayerType.ConvolutionaryLayer;
+
+            ArrayFilters = new Matrix[NFilters];
+            for (int i = 0; i < NFilters; i++)
+            {
+                ArrayFilters[i] = new Matrix(WFilters, HFilters, DepthOfInputMatrix, rnd);
+            }
+            this.WFilters = WFilters;
+            this.HFilters = HFilters;
+        }
+        public ConvolutionaryLayer(Matrix[] newArrayFilters, int WFilters, int HFilters)
+        {
+            this._LayerType = LayerType.ConvolutionaryLayer;
+
+            ArrayFilters = newArrayFilters;
+            this.WFilters = WFilters;
+            this.HFilters = HFilters;
+        }
+        public ConvolutionaryLayer(DataArray DA)
+        {
+            this._LayerType = LayerType.ConvolutionaryLayer;
+
+            ArrayFilters = new Matrix[DA.ReadInt()];
+            this.WFilters = DA.ReadInt();
+            this.HFilters = DA.ReadInt();
+            for (int i = 0; i < ArrayFilters.Length; i++)
+            {
+                ArrayFilters[i] = new Matrix(DA);
+            }
+        }
+
+        //Вычисляет значения массива OutputArray из массива InputArray
+        public override void Calculate()
+        {
+            if (InputMatrix == null)
+                Console.WriteLine("Error! Нет входящей матрицы");
+            OutputMatrix = new Matrix(InputMatrix.W - WFilters + 1, InputMatrix.H - HFilters + 1, ArrayFilters.Length);
+            for (int i = 0; i < OutputMatrix.W; i++)
+                for (int j = 0; j < OutputMatrix.H; j++)
+                    for (int k = 0; k < OutputMatrix.D; k++)
+                        OutputMatrix.matrix[i][j][k] = ActivationFunction(InputMatrix.MultiplyPartOfTheMatrix(i, j, ArrayFilters[k]));
+        }
+
+        //Заполняет массив InputArray
+        public override void SetInputArray(Matrix InputMatrix)
+        {
+            this.InputMatrix = InputMatrix;
+        }
+
+        //Случаным образом изменяет сеть
+        public override void ToRandomlyChange(float DegreeOfChange, Random rnd)
+        {
+            ArrayFilters[(int)(rnd.NextDouble() * ArrayFilters.Length)].ToRandomlyChange(DegreeOfChange, rnd);
+        }
+
+
+        //-------!!! Не проверенная функция !!!-------
+        public override void ToCorrectLayer(Matrix NextErrorMatrix, float SpeedOfTraining)
+        {
+            ErrorMatrix = new Matrix(InputMatrix.W, InputMatrix.H, InputMatrix.D);
+            for (int i = 0; i < NextErrorMatrix.W; i++)
+                for (int j = 0; j < NextErrorMatrix.H; j++)
+                    for (int f = 0; f < NextErrorMatrix.D; f++)
+                        ErrorMatrix.AddPartOfMatrix(i, j, NextErrorMatrix.matrix[i][j][f] * ArrayFilters[f]);
+
+            for (int i = 0; i < ErrorMatrix.W; i++)
+                for (int j = 0; j < ErrorMatrix.H; j++)
+                    for (int f = 0; f < ErrorMatrix.D; f++)
+                        ErrorMatrix.matrix[i][j][f] *= InputMatrix.matrix[i][j][f] * (1 - InputMatrix.matrix[i][j][f]);
+
+            for (int i = 0; i < NextErrorMatrix.W; i++)
+                for (int j = 0; j < NextErrorMatrix.H; j++)
+                    for (int f = 0; f < NextErrorMatrix.D; f++)
+                        //
+                        for (int Xf = 0; Xf < ArrayFilters[f].W; Xf++)
+                            for (int Yf = 0; Yf < ArrayFilters[f].H; Yf++)
+                                for (int Zf = 0; Zf < ArrayFilters[f].D; Zf++)
+                                    ArrayFilters[f].matrix[Xf][Yf][Zf] += SpeedOfTraining * NextErrorMatrix.matrix[i][j][f] * InputMatrix.matrix[i + Xf][j + Yf][Zf];
+        }
+
+
+        //Возвращает параметры слоя для сохранения
+        public override byte[] ToByteArray()
+        {
+            byte[] ByteArray = BitConverter.GetBytes(_LayerType.GetHashCode());
+            ByteArray = Addition(ByteArray, BitConverter.GetBytes(ArrayFilters.Length));
+            ByteArray = Addition(ByteArray, BitConverter.GetBytes(WFilters));
+            ByteArray = Addition(ByteArray, BitConverter.GetBytes(HFilters));
+            for (int i = 0; i < ArrayFilters.Length; i++)
+            {
+                ByteArray = Addition(ByteArray, ArrayFilters[i].ToByteArray());
+            }
+            return ByteArray;
+        }
+        //Клонирует объект
+        public override Layer Clone()
+        {
+            Matrix[] newArrayFilters = new Matrix[ArrayFilters.Length];
+            for (int i = 0; i < newArrayFilters.Length; i++)
+                newArrayFilters[i] = ArrayFilters[i].Clone();
+            return new ConvolutionaryLayer(newArrayFilters, WFilters, HFilters);
+        }
+        //Выводит в консоль
+        public override void WriteInConsole()
+        {
+            for (int i = 0; i < ArrayFilters.Length; i++)
+            {
+                Console.WriteLine("Filter {0}:", i);
+                ArrayFilters[i].WriteInConsole();
+            }
+        }
+    }
+    public class CompressionLayer : Layer
+    {
+        public CompressionLayer()
+        {
+            this._LayerType = LayerType.CompressionLayer;
+        }
+        public override void Calculate()
+        {
+            OutputMatrix = new Matrix((int)(InputMatrix.W / 2), (int)(InputMatrix.H / 2), InputMatrix.D);
+            for (int w = 0; w < OutputMatrix.W; w++)
+                for (int h = 0; h < OutputMatrix.H; h++)
+                    for (int d = 0; d < OutputMatrix.D; d++)
+                        OutputMatrix.matrix[w][h][d] = Math.Max(Math.Max(InputMatrix.matrix[w * 2][h * 2][d], InputMatrix.matrix[w * 2 + 1][h * 2][d]),
+                            Math.Max(InputMatrix.matrix[w * 2][h * 2 + 1][d], InputMatrix.matrix[w * 2 + 1][h * 2 + 1][d]));
+        }
+
+        //Заполняет массив InputArray
+        public override void SetInputArray(Matrix InputMatrix)
+        {
+            this.InputMatrix = InputMatrix;
+        }
+
+        public override void ToCorrectLayer(Matrix NextErrorArray, float SpeedOfTraining)
+        {
+            ErrorMatrix = new Matrix(InputMatrix.W, InputMatrix.H, InputMatrix.D);
+            for (int i = 0; i < ErrorMatrix.W; i++)
+                for (int j = 0; j < ErrorMatrix.H; j++)
+                    for (int k = 0; k < ErrorMatrix.D; k++)
+                        ErrorMatrix.matrix[i][j][k] = NextErrorArray.matrix[i / 2][j / 2][k];
+        }
+        public override byte[] ToByteArray()
+        {
+            byte[] ByteArray = BitConverter.GetBytes(_LayerType.GetHashCode());
+            return ByteArray;
+        }
+        //Клонирует объект
+        public override Layer Clone()
+        {
+            return new CompressionLayer();
+        }
+    }
+
+
+
     public class Neuron
     {
-        public float InputValue, Value, Error;
-        public float[] SynapseArray, DeltaW;
+        public float Value;
+        public float[] SynapseArray;
+
         public Neuron(float[] SynapseArray)
         {
-            InputValue = 0;
             Value = 0;
             this.SynapseArray = SynapseArray;
         }
         public Neuron(DataArray DA)
         {
-            InputValue = 0;
             Value = 0;
             SynapseArray = new float[DA.ReadInt()];
             for (int i = 0; i < SynapseArray.Length; i++)
                 SynapseArray[i] = DA.ReadFloat();
         }
-
-        public void Calculate(NeuralLayer NextLayer)
-        {
-            Value = ActivationFunction(InputValue);
-            for (int i = 0; i < SynapseArray.Length; i++)
-                NextLayer.NeuronArray[i].InputValue += Value * SynapseArray[i];
-        }
-        public float ActivationFunction(float Input)
-        {
-            return (float)(Math.Exp(Input * 2) - 1) / (float)(Math.Exp(Input * 2) + 1);
-        }
-        public float DerivativeActivationFunction(float Input)
-        {
-            return (float)(Math.Exp(Input) * 4) / (float)(Math.Exp(Input * 2) + 1);
-        }
         public void SetRandomSynapseArray(Random rnd)
         {
             for (int i = 0; i < SynapseArray.Length; i++)
-                SynapseArray[i] = (float)rnd.NextDouble() - 0.5f;
+                SynapseArray[i] = (float)(rnd.NextDouble() - 0.5f) * 10;
         }
-
-        public void CalculateDeltaW(NeuralLayer NextLayer, float SpeedOfTraining)
-        {
-            DeltaW = new float[SynapseArray.Length];
-            for (int i = 0; i < SynapseArray.Length; i++)
-            {
-                DeltaW[i] = SpeedOfTraining * Value * NextLayer.NeuronArray[i].Error;// * DerivativeActivationFunction(InputValue);
-            }
-
-            Error = 0;
-            for (int i = 0; i < SynapseArray.Length; i++)
-            {
-                Error += SynapseArray[i] * NextLayer.NeuronArray[i].Error;
-            }
-        }
-        public void ToCorrectSynapseArray()
-        {
-            for (int i = 0; i < SynapseArray.Length; i++)
-            {
-                SynapseArray[i] += DeltaW[i];
-                DeltaW[i] = 0;
-            }
-        }
-
 
         public byte[] ToByteArray()
         {
@@ -381,199 +657,24 @@ namespace NeuralNetwork
                 s[i + index] = b[i];
             return s;
         }
-    }
-    public class Layer
-    {
-        public enum LayerType { NeuralLayer, ConvolutionaryLayer, CompressionLayer };
-        public LayerType _LayerType;
-
-        //Только для сверточных сетей
-        public Matrix ErrorArray;
-        public virtual byte[] ToByteArray()
+        //Клонирует объект
+        public Neuron Clone()
         {
-            byte[] ByteArray = BitConverter.GetBytes(_LayerType.GetHashCode());
-            return ByteArray;
+            float[] newSynapseArray = new float[SynapseArray.Length];
+            for (int i = 0; i < SynapseArray.Length; i++)
+                newSynapseArray[i] = SynapseArray[i];
+            return new Neuron(newSynapseArray);
         }
-        public static byte[] Addition(byte[] a, byte[] b)
+        public void WriteInConsole()
         {
-            byte[] s = new byte[a.Length + b.Length];
-            int index;
-            for (index = 0; index < a.Length; index++)
-                s[index] = a[index];
-            for (int i = 0; i < b.Length; i++)
-                s[i + index] = b[i];
-            return s;
+            for (int i = 0; i < SynapseArray.Length; i++)
+            {
+                
+                Console.Write("{0, 5:f3}\t", SynapseArray[i]);
+            }
+            Console.Write('\n');
         }
     }
-
-    public class NeuralLayer : Layer
-    {
-        public Neuron[] NeuronArray;
-        public NeuralLayer(LayerType _LayerType, int NumberOfNeuronsInLayer, int NumberOfNeuronsInNextLayer, Random rnd)
-        {
-            this._LayerType = _LayerType;
-            NeuronArray = new Neuron[NumberOfNeuronsInLayer];
-            for (int i = 0; i < NumberOfNeuronsInLayer; i++)
-            {
-                NeuronArray[i] = new Neuron(new float[NumberOfNeuronsInNextLayer]);
-                NeuronArray[i].SetRandomSynapseArray(rnd);
-            }
-        }
-        public NeuralLayer(LayerType _LayerType, DataArray DA)
-        {
-            this._LayerType = _LayerType;
-
-            NeuronArray = new Neuron[DA.ReadInt()];
-            for (int i = 0; i < NeuronArray.Length; i++)
-                NeuronArray[i] = new Neuron(DA);
-        }
-        public void FillErrorArray(int W, int H, int D)
-        {
-            ErrorArray = new Matrix(W, H, D);
-            for (int i = 0; i < W; i++)
-                for (int j = 0; j < H; j++)
-                    for (int k = 0; k < D; k++)
-                        ErrorArray.matrix[i][j][k] = NeuronArray[i + j * W + k * W * H].Error;
-        }
-        public override byte[] ToByteArray()
-        {
-            byte[] ByteArray = BitConverter.GetBytes(_LayerType.GetHashCode());
-            ByteArray = Addition(ByteArray, BitConverter.GetBytes(NeuronArray.Length));
-            for (int i = 0; i < NeuronArray.Length; i++)
-            {
-                ByteArray = Addition(ByteArray, NeuronArray[i].ToByteArray());
-            }
-            return ByteArray;
-        }
-    }
-    public class ConvolutionaryLayer : Layer
-    {
-        public Matrix InputMatrix, OutputMatrix;
-        public Matrix[] ArrayFilters, DeltaW;
-        private int WFilters, HFilters;
-        public ConvolutionaryLayer(LayerType _LayerType, int WFilters, int HFilters, int DepthOfInputMatrix, int NFilters, Random rnd)
-        {
-            this._LayerType = _LayerType;
-
-            ArrayFilters = new Matrix[NFilters];
-            for (int i = 0; i < NFilters; i++)
-            {
-                ArrayFilters[i] = new Matrix(WFilters, HFilters, DepthOfInputMatrix, rnd);
-            }
-            this.WFilters = WFilters;
-            this.HFilters = HFilters;
-        }
-        public ConvolutionaryLayer(LayerType _LayerType, DataArray DA)
-        {
-            this._LayerType = _LayerType;
-
-            ArrayFilters = new Matrix[DA.ReadInt()];
-            this.WFilters = DA.ReadInt();
-            this.HFilters = DA.ReadInt();
-            for (int i = 0; i < ArrayFilters.Length; i++)
-            {
-                ArrayFilters[i] = new Matrix(DA);
-            }
-        }
-
-        public void Calculate()
-        {
-            if (InputMatrix == null)
-                Console.WriteLine("Error! Нет входящей матрицы");
-            OutputMatrix = new Matrix(InputMatrix.W - WFilters, InputMatrix.H - HFilters, ArrayFilters.Length);
-            for (int i = 0; i < InputMatrix.W - WFilters; i++)
-                for (int j = 0; j < InputMatrix.H - HFilters; j++)
-                {
-                    Matrix PartOfMatrix = InputMatrix.GetPartOfMatrix(i, j, WFilters, HFilters);
-                    for (int k = 0; k < ArrayFilters.Length; k++)
-                        OutputMatrix.matrix[i][j][k] = ActivationFunction((PartOfMatrix * ArrayFilters[k]) / ArrayFilters[k].W / ArrayFilters[k].H / ArrayFilters[k].D);
-                }
-        }
-        public float ActivationFunction(float Input)
-        {
-            return (float)((Math.Exp(Input * 2) - 1) / (Math.Exp(Input * 2) + 1));
-        }
-
-        public void CalculateDeltaW(Layer NextLayer, float SpeedOfTraining)
-        {
-            DeltaW = new Matrix[ArrayFilters.Length];
-            for (int i = 0; i < DeltaW.Length; i++)
-            {
-                DeltaW[i] = new Matrix(WFilters, HFilters, InputMatrix.D);
-            }
-            for (int i = 0; i < DeltaW.Length; i++)
-                for (int j = 0; j < NextLayer.ErrorArray.W; j++)
-                    for (int k = 0; k < NextLayer.ErrorArray.H; k++)
-                        DeltaW[i] = DeltaW[i] + SpeedOfTraining / ArrayFilters.Length * NextLayer.ErrorArray.matrix[j][k][i] * InputMatrix.GetPartOfMatrix(j, k, WFilters, HFilters);
-
-
-            ErrorArray = new Matrix(InputMatrix.W, InputMatrix.H, InputMatrix.D);
-            for (int i = 0; i < ErrorArray.W; i++)
-                for (int j = 0; j < ErrorArray.H; j++)
-                    for (int k = 0; k < ErrorArray.D; k++)
-                        ErrorArray.matrix[i][j][k] = 0;
-
-            for (int i = 0; i < NextLayer.ErrorArray.W; i++)
-                for (int j = 0; j < NextLayer.ErrorArray.H; j++)
-                    for (int f = 0; f < NextLayer.ErrorArray.D; f++)
-                        ErrorArray.AddPartOfMatrix(i, j, NextLayer.ErrorArray.matrix[i][j][f] * ArrayFilters[f]);
-        }
-        public void ToCorrectFiltersArray()
-        {
-            for (int i = 0; i < ArrayFilters.Length; i++)
-            {
-                ArrayFilters[i] += DeltaW[i];
-                DeltaW[i] = new Matrix(ArrayFilters[i].W, ArrayFilters[i].H, ArrayFilters[i].D);
-            }
-        }
-
-        public override byte[] ToByteArray()
-        {
-            byte[] ByteArray = BitConverter.GetBytes(_LayerType.GetHashCode());
-            ByteArray = Addition(ByteArray, BitConverter.GetBytes(ArrayFilters.Length));
-            ByteArray = Addition(ByteArray, BitConverter.GetBytes(WFilters));
-            ByteArray = Addition(ByteArray, BitConverter.GetBytes(HFilters));
-            for (int i = 0; i < ArrayFilters.Length; i++)
-            {
-                ByteArray = Addition(ByteArray, ArrayFilters[i].ToByteArray());
-            }
-            return ByteArray;
-        }
-    }
-    public class CompressionLayer : Layer
-    {
-        public Matrix InputMatrix, OutputMatrix;
-        public CompressionLayer(LayerType _LayerType)
-        {
-            this._LayerType = _LayerType;
-        }
-        public void Calculate()
-        {
-            if (InputMatrix == null)
-                Console.WriteLine("Error! Нет входящей матрицы");
-            OutputMatrix = new Matrix(InputMatrix.W / 2 + InputMatrix.W % 2, InputMatrix.H / 2 + InputMatrix.H % 2, InputMatrix.D);
-            for (int i = 0; i < OutputMatrix.W; i++)
-                for (int j = 0; j < OutputMatrix.H; j++)
-                    for (int k = 0; k < InputMatrix.D; k++)
-                        OutputMatrix.matrix[i][j][k] = Math.Max(Math.Max(InputMatrix.GetPoint(i * 2, j * 2, k), InputMatrix.GetPoint(i * 2 + 1, j * 2, k)),
-                            Math.Max(InputMatrix.GetPoint(i * 2, j * 2 + 1, k), InputMatrix.GetPoint(i * 2 + 1, j * 2 + 1, k)));
-        }
-
-        public void CalculateDeltaW(Layer NextLayer)
-        {
-            ErrorArray = new Matrix(InputMatrix.W, InputMatrix.H, InputMatrix.D);
-            for (int i = 0; i < ErrorArray.W; i++)
-                for (int j = 0; j < ErrorArray.H; j++)
-                    for (int k = 0; k < ErrorArray.D; k++)
-                        ErrorArray.matrix[i][j][k] = NextLayer.ErrorArray.matrix[i / 2][j / 2][k];
-        }
-        public override byte[] ToByteArray()
-        {
-            byte[] ByteArray = BitConverter.GetBytes(_LayerType.GetHashCode());
-            return ByteArray;
-        }
-    }
-
     public class Matrix
     {
         public float[][][] matrix;
@@ -593,6 +694,13 @@ namespace NeuralNetwork
                     }
                 }
             }
+            this.W = W;
+            this.H = H;
+            this.D = D;
+        }
+        public Matrix(int W, int H, int D, float[][][] newMatrix)
+        {
+            matrix = newMatrix;
             this.W = W;
             this.H = H;
             this.D = D;
@@ -635,8 +743,7 @@ namespace NeuralNetwork
                 }
             }
         }
-
-        public void BitmapToMatrix(Bitmap _Image)
+        public Matrix(Bitmap _Image)
         {
             matrix = new float[_Image.Width][][];
             for (int i = 0; i < _Image.Width; i++)
@@ -655,23 +762,29 @@ namespace NeuralNetwork
             H = _Image.Height;
             D = 3;
         }
-        public Matrix GetPartOfMatrix(int X, int Y, int W, int H)
-        {
-            Matrix A = new Matrix(W, H, D);
-            for (int i = 0; i < W; i++)
-                for (int j = 0; j < H; j++)
-                    for (int k = 0; k < D; k++)
-                        A.matrix[i][j][k] = matrix[i + X][j + Y][k];
-            return A;
-        }
+
+
         public void AddPartOfMatrix(int X, int Y, Matrix P)
         {
-            if (X < 0 || Y < 0 || X + P.W >= W || Y + P.H >= H || P.D != D)
+            if (X < 0 || Y < 0 || X + P.W > W || Y + P.H > H || P.D != D)
                 Console.WriteLine("Error! Ошибка при добавлении матрицы!");
             for (int i = 0; i < P.W; i++)
                 for (int j = 0; j < P.H; j++)
                     for (int k = 0; k < P.D; k++)
                         matrix[i + X][j + Y][k] += P.matrix[i][j][k];
+        }
+        public float MultiplyPartOfTheMatrix(int x, int y, Matrix M)
+        {
+            if (x < 0 || y < 0 || x + M.W > W || y + M.H > H || M.D != D)
+                Console.WriteLine("Error! Ошибка при умножении матрицы!");
+            float s = 0;
+            for (int i = 0; i < M.W; i++)
+                for (int j = 0; j < M.H; j++)
+                    for (int k = 0; k < M.D; k++)
+                    {
+                        s += M.matrix[i][j][k] * matrix[i + x][j + y][k];
+                    }
+            return s;
         }
         public float[] ToFloatArray()
         {
@@ -738,13 +851,12 @@ namespace NeuralNetwork
             return ByteArray;
         }
 
-        public float GetPoint(int X, int Y, int Z)
+        //Случаным образом изменяет сеть
+        public void ToRandomlyChange(float DegreeOfChange, Random rnd)
         {
-            if (matrix != null && X >= 0 && Y >= 0 && Z >= 0 && X < W && Y < H && Z < D)
-                return matrix[X][Y][Z];
-            else
-                return 0;
+            matrix[(int)(rnd.NextDouble() * W)][(int)(rnd.NextDouble() * H)][(int)(rnd.NextDouble() * D)] *= (float)(rnd.NextDouble() * DegreeOfChange);
         }
+
         public static byte[] Addition(byte[] a, byte[] b)
         {
             byte[] s = new byte[a.Length + b.Length];
@@ -754,6 +866,39 @@ namespace NeuralNetwork
             for (int i = 0; i < b.Length; i++)
                 s[i + index] = b[i];
             return s;
+        }
+        //Клонирует объект
+        public Matrix Clone()
+        {
+            float[][][] newMatrix = new float[W][][];
+            for (int i = 0; i < W; i++)
+            {
+                newMatrix[i] = new float[H][];
+                for (int j = 0; j < H; j++)
+                {
+                    newMatrix[i][j] = new float[D];
+                    for (int k = 0; k < D; k++)
+                    {
+                        newMatrix[i][j][k] = this.matrix[i][j][k];
+                    }
+                }
+            }
+            return new Matrix(W, H, D, newMatrix);
+        }
+        public void WriteInConsole()
+        {
+            for (int h = 0; h < H; h++)
+            {
+                for (int d = 0; d < D; d++)
+                {
+                    Console.Write('\t');
+                    for (int w = 0; w < W; w++)
+                    {
+                        Console.Write("{0, 5:f3}\t", matrix[w][h][d]);
+                    }
+                }
+                Console.Write('\n');
+            }
         }
     }
     public class DataArray
