@@ -12,7 +12,7 @@ namespace NeuralNetworkLibrary
     public class NeuralNetwork
     {
         public const double Version = 1.00;     //Текущая версия
-        public float SpeedOfTraining = 0.85f;    //Скорость обучения
+        public float SpeedOfTraining = 10.85f;    //Скорость обучения
         public float Erorr = -1f;
         public Layer[] LayerArray;              //Массив слоев
 
@@ -112,6 +112,37 @@ namespace NeuralNetworkLibrary
                     a = Calculate(TrainingSetArray[i].InputMatrix);
                 if (a.Length != TrainingSetArray[i].OutputArray.Length)
                     Console.WriteLine("Error!!! Неверный тип входных данных для данного типа сети! #2");
+                
+                for (int j = 0; j < a.Length; j++)
+                {
+                    erorr += Math.Abs((a[j] - TrainingSetArray[i].OutputArray[j]) / a.Length / TrainingSetArray.Length);
+                }
+            }
+            Erorr = erorr;
+            return erorr;
+        }
+        //Тестирует сеть
+        public float TestNeuralNetworkWorking(TrainingSet[] TrainingSetArray)
+        {
+            if (LayerArray.Length == 0)
+                Console.WriteLine("Error!!! Неверный тип входных данных для данного типа сети!");
+
+            float erorr = 0;
+            for (int i = 0; i < TrainingSetArray.Length; i++)
+            {
+                float[] a;
+                if (LayerArray[0]._LayerType == Layer.LayerType.NeuralLayer)
+                    a = Calculate(TrainingSetArray[i].InputArray);
+                else
+                    a = Calculate(TrainingSetArray[i].InputMatrix);
+                if (a.Length != TrainingSetArray[i].OutputArray.Length)
+                    Console.WriteLine("Error!!! Неверный тип входных данных для данного типа сети! #2");
+
+                if (a[0] > 0.5f)
+                    a[0] = 1;
+                else
+                    a[0] = 0;
+
                 for (int j = 0; j < a.Length; j++)
                 {
                     erorr += Math.Abs((a[j] - TrainingSetArray[i].OutputArray[j]) / a.Length / TrainingSetArray.Length);
@@ -162,6 +193,7 @@ namespace NeuralNetworkLibrary
                 if (a.Length != TrainingSetArray[i].OutputArray.Length)
                     Console.WriteLine("Error!!! Неверный тип входных данных для данного типа сети! #1");
                 ToCorrectLayers(a, TrainingSetArray[i].OutputArray);
+                a = Calculate(TrainingSetArray[i].InputMatrix);
             }
         }
 
@@ -368,7 +400,7 @@ namespace NeuralNetworkLibrary
 
             for (int i = 0; i < InputArray.Length; i++)
                 for (int j = 0; j < NeuronArray[0].SynapseArray.Length; j++)
-                    OutputArray[j] += InputArray[i] * NeuronArray[i].SynapseArray[j];
+                    OutputArray[j] += InputArray[i] * NeuronArray[i].SynapseArray[j] / NeuronArray.Length;
 
             for (int i = 0; i < OutputArray.Length; i++)
                 OutputArray[i] = ActivationFunction(OutputArray[i]);
@@ -394,7 +426,7 @@ namespace NeuralNetworkLibrary
             {
                 ErrorArray[i] = 0;
                 for (int j = 0; j < NextErrorArray.Length; j++)
-                    ErrorArray[i] += NeuronArray[i].SynapseArray[j] * NextErrorArray[j];
+                    ErrorArray[i] += NeuronArray[i].SynapseArray[j] * NextErrorArray[j] / NeuronArray.Length;
                 ErrorArray[i] *= InputArray[i] * (1 - InputArray[i]);
             }
             for (int i = 0; i < NeuronArray.Length; i++)
@@ -497,7 +529,7 @@ namespace NeuralNetworkLibrary
             for (int i = 0; i < OutputMatrix.W; i++)
                 for (int j = 0; j < OutputMatrix.H; j++)
                     for (int k = 0; k < OutputMatrix.D; k++)
-                        OutputMatrix.matrix[i][j][k] = ActivationFunction(InputMatrix.MultiplyPartOfTheMatrix(i, j, ArrayFilters[k]));
+                        OutputMatrix.matrix[i][j][k] = ActivationFunction(InputMatrix.MultiplyPartOfTheMatrix(i, j, ArrayFilters[k]) / WFilters / HFilters);
         }
 
         //Заполняет массив InputArray
@@ -525,7 +557,7 @@ namespace NeuralNetworkLibrary
             for (int i = 0; i < ErrorMatrix.W; i++)
                 for (int j = 0; j < ErrorMatrix.H; j++)
                     for (int f = 0; f < ErrorMatrix.D; f++)
-                        ErrorMatrix.matrix[i][j][f] *= InputMatrix.matrix[i][j][f] * (1 - InputMatrix.matrix[i][j][f]);
+                        ErrorMatrix.matrix[i][j][f] *= InputMatrix.matrix[i][j][f] * (1 - InputMatrix.matrix[i][j][f]) / WFilters / HFilters;// Добавленное  / WFilters / HFilters возможно не нужно
 
             for (int i = 0; i < NextErrorMatrix.W; i++)
                 for (int j = 0; j < NextErrorMatrix.H; j++)
@@ -633,7 +665,7 @@ namespace NeuralNetworkLibrary
         public void SetRandomSynapseArray(Random rnd)
         {
             for (int i = 0; i < SynapseArray.Length; i++)
-                SynapseArray[i] = (float)(rnd.NextDouble() - 0.5f) * 10;
+                SynapseArray[i] = (float)(rnd.NextDouble()) * 10;// - 0.5f
         }
 
         public byte[] ToByteArray()
